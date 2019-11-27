@@ -1,6 +1,7 @@
 use github_rs::client::{Executor, Github};
 use serde::Deserialize;
 // use serde_json::Value;
+use regex::Regex;
 use std::env;
 use std::process;
 
@@ -26,6 +27,16 @@ struct User {
     site_admin: bool,
 }
 
+fn parse_page(url: &str) -> i32 {
+    let re = Regex::new(r"[?&]page=(\d+)").unwrap();
+    match re.captures(url) {
+        Some(cap) => cap[1].parse::<i32>().unwrap(),
+        None => 1,
+    }
+}
+
+fn parse_link(link: &str) {}
+
 fn main() {
     let token = match env::var("GITHUB_TOKEN") {
         Ok(token) => token,
@@ -39,12 +50,8 @@ fn main() {
     let response = client.get().user().followers().execute::<Vec<User>>();
     let followers = match response {
         Ok((_headers, _status, json)) => {
-            if let Some(json) = json {
-                json
-            } else {
-                println!("Error parsing JSON");
-                process::exit(1);
-            }
+            println!("{:?}", _headers);
+            json.expect("Error while parsing JSON")
         }
         Err(e) => {
             println!("{}", e);
@@ -52,6 +59,6 @@ fn main() {
         }
     };
     for follower in followers {
-        println!("{}", follower.id);
+        println!("{}", follower.login);
     }
 }
