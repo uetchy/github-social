@@ -1,5 +1,5 @@
 {
-  "name": "github-followers",
+  "name": "git-social",
   "version": "0.0.0",
   "scripts": {
     "build": "shx rm -rf lib && tsc && shx chmod +x lib/cli.js",
@@ -28,5 +28,5 @@
   "files": [
     "lib"
   ],
-  "repository": "git@github.com:uetchy/github-followers.git"
+  "repository": "git@github.com:uetchy/git-social.git"
 }
