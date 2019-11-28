@@ -1,9 +1,9 @@
-# git-social
+# github-social
 
 Manage followers and followings in GitHub.
 
 ## Usage
 
 ```
-npx git-social
+npx github-social
 ```
