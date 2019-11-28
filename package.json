@@ -2,7 +2,7 @@
   "name": "github-followers",
   "version": "0.0.0",
   "scripts": {
-    "build": "tsc && shx chmod +x lib/cli.js",
+    "build": "shx rm -rf lib && tsc && shx chmod +x lib/cli.js",
     "dev": "tsc -w"
   },
   "dependencies": {
@@ -24,5 +24,9 @@
   "author": "Yasuaki Uechi <y@uechi.io> (https://uechi.io/)",
   "license": "MIT",
   "main": "index.js",
+  "bin": "lib/cli.js",
+  "files": [
+    "lib"
+  ],
   "repository": "git@github.com:uetchy/github-followers.git"
 }
