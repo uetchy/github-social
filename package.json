@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "build": "shx rm -rf lib && tsc && shx chmod +x lib/cli.js",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "test": "echo TODO"
   },
   "dependencies": {
     "@octokit/rest": "^16.35.0",
