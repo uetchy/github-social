@@ -23,7 +23,17 @@ interface Relations {
 }
 
 function cacheForRelations() {
-  return new Conf({ configName: "relationsCache" });
+  return new Conf({
+    projectName: "github-social",
+    configName: "relationsCache"
+  });
+}
+
+function cacheForUsers() {
+  return new Conf({
+    projectName: "github-social",
+    configName: "userCache"
+  });
 }
 
 async function getFollowers(auth: string) {
@@ -88,11 +98,11 @@ async function getRelations(auth: string): Promise<Relations> {
 }
 
 async function getUser(username: string, auth: string): Promise<User> {
-  const userCache = new Conf({ configName: "userCache" });
+  const userCache = cacheForUsers();
   const user =
     (userCache.get(username) as User) ??
     (await (async () => {
-      console.log(`Not in cache: ${username}`);
+      console.log(`Fetching user profile for ${username}`);
       const github = new Ocokit({ auth });
       const user = (await github.users.getByUsername({ username })).data;
       userCache.set(user.login, user);
@@ -104,7 +114,7 @@ async function getUser(username: string, auth: string): Promise<User> {
 async function main(args: string[]): Promise<void> {
   const token = process.env["GITHUB_TOKEN"];
   if (token === undefined) {
-    throw new Error("Missing GITHUB_TOKEN");
+    throw new Error("Missing GITHUB_TOKEN env var.");
   }
 
   const { followers, followees } = await getRelations(token);
@@ -162,4 +172,6 @@ async function main(args: string[]): Promise<void> {
   console.log(table.toString());
 }
 
-main(process.argv.slice(2));
+main(process.argv.slice(2)).catch(err => {
+  console.log(`ERROR: ${err.message}`);
+});
