@@ -5,5 +5,5 @@ Manage followers and followings in GitHub.
 ## Usage
 
 ```
-npx github-social
+GITHUB_TOKEN=<your github token> npx github-social
 ```
