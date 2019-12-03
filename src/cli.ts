@@ -3,9 +3,7 @@
 import Conf from "conf";
 import chalk from "chalk";
 import Table from "cli-table";
-import Ocokit, { UsersGetByUsernameResponse } from "@octokit/rest";
-
-type User = UsersGetByUsernameResponse;
+import Ocokit, { UsersGetByUsernameResponse as User } from "@octokit/rest";
 
 interface Row {
   status: string;
@@ -22,23 +20,18 @@ interface Relations {
   followees: Set<string>;
 }
 
-function cacheForRelations() {
-  return new Conf({
+const getConfig = (configName: string): Conf =>
+  new Conf({
     projectName: "github-social",
-    configName: "relationsCache"
+    configName
   });
-}
+const cacheForRelations = () => getConfig("relationsCache");
+const cacheForUsers = () => getConfig("userCache");
 
-function cacheForUsers() {
-  return new Conf({
-    projectName: "github-social",
-    configName: "userCache"
-  });
-}
-
-async function getFollowers(auth: string) {
+async function getFollowers(auth: string): Promise<string[]> {
   const cache = cacheForRelations();
   const cachedFollowers = cache.get("followers");
+
   if (
     !cachedFollowers ||
     Date.now() - cachedFollowers.lastUpdate > 60 * 60 * 1000
@@ -60,12 +53,14 @@ async function getFollowers(auth: string) {
     });
     return followers;
   }
+
   return cachedFollowers.data;
 }
 
-async function getFollowees(auth: string) {
+async function getFollowees(auth: string): Promise<string[]> {
   const cache = cacheForRelations();
   const cachedFollowees = cache.get("followees");
+
   if (
     !cachedFollowees ||
     Date.now() - cachedFollowees.lastUpdate > 60 * 60 * 1000
@@ -87,6 +82,7 @@ async function getFollowees(auth: string) {
     });
     return followees;
   }
+
   return cachedFollowees.data;
 }
 
@@ -108,6 +104,7 @@ async function getUser(username: string, auth: string): Promise<User> {
       userCache.set(user.login, user);
       return user;
     })());
+
   return user;
 }
 
@@ -128,47 +125,51 @@ async function main(args: string[]): Promise<void> {
   console.log(`watching: ${watching.length}`);
   console.log(`watchers: ${watcher.length}`);
 
-  let watchingResult = await Promise.all(
-    watching.map<Promise<Row>>(async username => {
-      const profile = await getUser(username, token);
-      const followerCount = profile.followers;
-      const followeesCount = profile.following;
-      return {
-        status: chalk.green("watching"),
-        login: profile.login,
-        repos: profile.public_repos,
-        followees: followeesCount,
-        followers: followerCount,
-        impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
-        url: profile.html_url
-      };
-    })
-  );
-  watchingResult = watchingResult.sort((a, b) => b.impact - a.impact);
+  const watchingResult = (
+    await Promise.all(
+      watching.map<Promise<Row>>(async username => {
+        const profile = await getUser(username, token);
+        const followerCount = profile.followers;
+        const followeesCount = profile.following;
+        return {
+          status: chalk.green("watching"),
+          login: profile.login,
+          repos: profile.public_repos,
+          followees: followeesCount,
+          followers: followerCount,
+          impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
+          url: profile.html_url
+        };
+      })
+    )
+  ).sort((a, b) => b.impact - a.impact);
 
-  let watcherResult = await Promise.all(
-    watcher.map<Promise<Row>>(async username => {
-      const profile = await getUser(username, token);
-      const followerCount = profile.followers;
-      const followeesCount = profile.following;
-      return {
-        status: chalk.magenta("watcher"),
-        login: profile.login,
-        repos: profile.public_repos,
-        followees: followeesCount,
-        followers: followerCount,
-        impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
-        url: profile.html_url
-      };
-    })
-  );
-  watcherResult = watcherResult.sort((a, b) => b.impact - a.impact);
+  const watcherResult = (
+    await Promise.all(
+      watcher.map<Promise<Row>>(async username => {
+        const profile = await getUser(username, token);
+        const followerCount = profile.followers;
+        const followeesCount = profile.following;
+        return {
+          status: chalk.magenta("watcher"),
+          login: profile.login,
+          repos: profile.public_repos,
+          followees: followeesCount,
+          followers: followerCount,
+          impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
+          url: profile.html_url
+        };
+      })
+    )
+  ).sort((a, b) => b.impact - a.impact);
 
   const table = new Table({
     head: Object.keys(watchingResult[0])
   });
-  table.push(...watchingResult.map(user => Object.values(user)));
-  table.push(...watcherResult.map(user => Object.values(user)));
+  table.push(
+    ...watchingResult.map(user => Object.values(user)),
+    ...watcherResult.map(user => Object.values(user))
+  );
   console.log(table.toString());
 }
 
