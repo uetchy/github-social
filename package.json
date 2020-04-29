@@ -7,20 +7,20 @@
     "test": "echo TODO"
   },
   "dependencies": {
-    "@octokit/rest": "^16.35.0",
-    "chalk": "^3.0.0",
+    "@octokit/rest": "^17.6.0",
+    "chalk": "^4.0.0",
     "cli-table": "^0.3.1",
-    "conf": "^6.2.0"
+    "conf": "^6.2.4"
   },
   "devDependencies": {
     "@types/cli-table": "^0.3.0",
-    "@types/jest": "^24.0.23",
-    "@types/node": "^12.12.14",
-    "jest": "^24.9.0",
+    "@types/jest": "^25.2.1",
+    "@types/node": "^13.13.4",
+    "jest": "^25.5.0",
     "shx": "^0.3.2",
-    "ts-jest": "^24.2.0",
-    "ts-node": "^8.5.2",
-    "typescript": "^3.7.2"
+    "ts-jest": "^25.4.0",
+    "ts-node": "^8.9.1",
+    "typescript": "^3.8.3"
   },
   "author": "Yasuaki Uechi <y@uechi.io> (https://uechi.io/)",
   "license": "MIT",
