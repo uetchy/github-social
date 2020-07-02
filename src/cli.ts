@@ -1,55 +1,62 @@
 #!/usr/bin/env ts-node
 
-import Conf from "conf";
-import chalk from "chalk";
-import Table from "cli-table";
-import Ocokit, { UsersGetByUsernameResponse as User } from "@octokit/rest";
+import Conf from 'conf';
+import chalk from 'chalk';
+import Table from 'cli-table';
+import { Octokit } from '@octokit/rest';
+import {
+  UsersListFollowedByAuthenticatedResponseData,
+  UsersGetByUsernameResponseData,
+} from '@octokit/types';
 
 interface Row {
   status: string;
   login: string;
   repos: number;
   followers: number;
-  followees: number;
+  followings: number;
   impact: number;
   url: string;
 }
 
 interface Relations {
   followers: Set<string>;
-  followees: Set<string>;
+  followings: Set<string>;
 }
+
+type User = UsersListFollowedByAuthenticatedResponseData[0];
 
 const getConfig = (configName: string): Conf =>
   new Conf({
-    projectName: "github-social",
-    configName
+    projectName: 'github-social',
+    configName,
   });
-const cacheForRelations = () => getConfig("relationsCache");
-const cacheForUsers = () => getConfig("userCache");
+const cacheForRelations = () => getConfig('relationsCache');
+const cacheForUsers = () => getConfig('userCache');
 
 async function getFollowers(auth: string): Promise<string[]> {
   const cache = cacheForRelations();
-  const cachedFollowers = cache.get("followers");
+  const cachedFollowers = cache.get('followers');
 
   if (
     !cachedFollowers ||
     Date.now() - cachedFollowers.lastUpdate > 60 * 60 * 1000
   ) {
-    const github = new Ocokit({ auth });
+    const github = new Octokit({ auth });
+
     const options = github.users.listFollowersForAuthenticatedUser.endpoint.merge(
-      { per_page: 100 }
+      { per_page: 100 },
     );
     let followers: string[] = [];
-    for await (const res of github.paginate.iterator(options)) {
+    for await (const res of github.paginate.iterator<User>(options)) {
       for (const user of res.data) {
         followers.push(user.login);
       }
     }
 
-    cache.set("followers", {
+    cache.set('followers', {
       lastUpdate: Date.now(),
-      data: followers
+      data: followers,
     });
     return followers;
   }
@@ -57,49 +64,49 @@ async function getFollowers(auth: string): Promise<string[]> {
   return cachedFollowers.data;
 }
 
-async function getFollowees(auth: string): Promise<string[]> {
+async function getFollowings(auth: string): Promise<string[]> {
   const cache = cacheForRelations();
-  const cachedFollowees = cache.get("followees");
+  const cachedFollowings = cache.get('followings');
 
   if (
-    !cachedFollowees ||
-    Date.now() - cachedFollowees.lastUpdate > 60 * 60 * 1000
+    !cachedFollowings ||
+    Date.now() - cachedFollowings.lastUpdate > 60 * 60 * 1000
   ) {
-    const github = new Ocokit({ auth });
-    const options = github.users.listFollowingForAuthenticatedUser.endpoint.merge(
-      { per_page: 100 }
-    );
-    let followees: string[] = [];
-    for await (const res of github.paginate.iterator(options)) {
+    const github = new Octokit({ auth });
+    const options = github.users.listFollowedByAuthenticated.endpoint.merge({
+      per_page: 100,
+    });
+    let followings: string[] = [];
+    for await (const res of github.paginate.iterator<User>(options)) {
       for (const user of res.data) {
-        followees.push(user.login);
+        followings.push(user.login);
       }
     }
 
-    cache.set("followees", {
+    cache.set('followings', {
       lastUpdate: Date.now(),
-      data: followees
+      data: followings,
     });
-    return followees;
+    return followings;
   }
 
-  return cachedFollowees.data;
+  return cachedFollowings.data;
 }
 
 async function getRelations(auth: string): Promise<Relations> {
   return {
     followers: new Set(await getFollowers(auth)),
-    followees: new Set(await getFollowees(auth))
+    followings: new Set(await getFollowings(auth)),
   };
 }
 
-async function getUser(username: string, auth: string): Promise<User> {
+async function getUser(username: string, auth: string) {
   const userCache = cacheForUsers();
   const user =
-    (userCache.get(username) as User) ??
+    (userCache.get(username) as UsersGetByUsernameResponseData) ??
     (await (async () => {
       console.log(`Fetching user profile for ${username}`);
-      const github = new Ocokit({ auth });
+      const github = new Octokit({ auth });
       const user = (await github.users.getByUsername({ username })).data;
       userCache.set(user.login, user);
       return user;
@@ -109,17 +116,21 @@ async function getUser(username: string, auth: string): Promise<User> {
 }
 
 async function main(args: string[]): Promise<void> {
-  const token = process.env["GITHUB_TOKEN"];
+  const token = process.env['GITHUB_TOKEN'];
   if (token === undefined) {
-    throw new Error("Missing GITHUB_TOKEN env var.");
+    throw new Error('Missing GITHUB_TOKEN env var.');
   }
 
-  const { followers, followees } = await getRelations(token);
-  const mutuals = [...followees].filter(username => followers.has(username));
-  const watching = [...followees].filter(username => !followers.has(username));
-  const watcher = [...followers].filter(username => !followees.has(username));
+  const { followers, followings } = await getRelations(token);
+  const mutuals = [...followings].filter((username) => followers.has(username));
+  const watching = [...followings].filter(
+    (username) => !followers.has(username),
+  );
+  const watcher = [...followers].filter(
+    (username) => !followings.has(username),
+  );
 
-  console.log(`followees: ${followees.size}`);
+  console.log(`followings: ${followings.size}`);
   console.log(`followers: ${followers.size}`);
   console.log(`mutuals: ${mutuals.length}`);
   console.log(`watching: ${watching.length}`);
@@ -127,52 +138,52 @@ async function main(args: string[]): Promise<void> {
 
   const watchingResult = (
     await Promise.all(
-      watching.map<Promise<Row>>(async username => {
+      watching.map<Promise<Row>>(async (username) => {
         const profile = await getUser(username, token);
         const followerCount = profile.followers;
-        const followeesCount = profile.following;
+        const followingsCount = profile.following;
         return {
-          status: chalk.green("watching"),
+          status: chalk.green('watching'),
           login: profile.login,
           repos: profile.public_repos,
-          followees: followeesCount,
+          followings: followingsCount,
           followers: followerCount,
-          impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
-          url: profile.html_url
+          impact: (followerCount + 0.0001) / (followingsCount + 0.0001),
+          url: profile.html_url,
         };
-      })
+      }),
     )
   ).sort((a, b) => b.impact - a.impact);
 
   const watcherResult = (
     await Promise.all(
-      watcher.map<Promise<Row>>(async username => {
+      watcher.map<Promise<Row>>(async (username) => {
         const profile = await getUser(username, token);
         const followerCount = profile.followers;
-        const followeesCount = profile.following;
+        const followingsCount = profile.following;
         return {
-          status: chalk.magenta("watcher"),
+          status: chalk.magenta('watcher'),
           login: profile.login,
           repos: profile.public_repos,
-          followees: followeesCount,
+          followings: followingsCount,
           followers: followerCount,
-          impact: (followerCount + 0.0001) / (followeesCount + 0.0001),
-          url: profile.html_url
+          impact: (followerCount + 0.0001) / (followingsCount + 0.0001),
+          url: profile.html_url,
         };
-      })
+      }),
     )
   ).sort((a, b) => b.impact - a.impact);
 
   const table = new Table({
-    head: Object.keys(watchingResult[0])
+    head: Object.keys(watchingResult[0]),
   });
   table.push(
-    ...watchingResult.map(user => Object.values(user)),
-    ...watcherResult.map(user => Object.values(user))
+    ...watchingResult.map((user) => Object.values(user)),
+    ...watcherResult.map((user) => Object.values(user)),
   );
   console.log(table.toString());
 }
 
-main(process.argv.slice(2)).catch(err => {
+main(process.argv.slice(2)).catch((err) => {
   console.log(`ERROR: ${err.message}`);
 });
