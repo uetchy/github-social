@@ -1,13 +1,10 @@
 #!/usr/bin/env ts-node
 
-import Conf from "conf";
+import { Octokit } from "@octokit/rest";
+import { Endpoints } from "@octokit/types";
 import chalk from "chalk";
 import Table from "cli-table";
-import { Octokit } from "@octokit/rest";
-import {
-  UsersListFollowedByAuthenticatedResponseData,
-  UsersGetByUsernameResponseData,
-} from "@octokit/types";
+import Conf from "conf";
 
 interface Row {
   status: string;
@@ -24,10 +21,24 @@ interface Relations {
   followings: Set<string>;
 }
 
-type User = UsersListFollowedByAuthenticatedResponseData[0];
+type User = Exclude<
+  Endpoints["GET /users/{username}/followers"]["response"]["data"][0],
+  null
+>;
 
-const getConfig = (configName: string): Conf =>
-  new Conf({
+type Schema = {
+  followers: {
+    lastUpdate: number;
+    data: string[];
+  };
+  followings: {
+    lastUpdate: number;
+    data: string[];
+  };
+};
+
+const getConfig = (configName: string) =>
+  new Conf<Schema>({
     projectName: "github-social",
     configName,
   });
@@ -118,7 +129,9 @@ async function getRelations(auth: string): Promise<Relations> {
 async function getUser(username: string, auth: string) {
   const userCache = cacheForUsers();
   const user =
-    (userCache.get(username) as UsersGetByUsernameResponseData) ??
+    (userCache.get(
+      username
+    ) as Endpoints["GET /users/{username}"]["response"]["data"]) ??
     (await (async () => {
       console.log(`Fetching user profile for ${username}`);
       const github = new Octokit({ auth });
