@@ -1,6 +1,6 @@
 {
   "name": "github-social",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Yasuaki Uechi <y@uechi.io> (https://uechi.io/)",
   "scripts": {
     "build": "shx rm -rf lib && tsc && shx chmod +x lib/cli.js",
