@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
 
 import { Octokit } from "@octokit/rest";
 import { Endpoints } from "@octokit/types";
@@ -70,12 +70,12 @@ async function getFollowers(auth: string): Promise<string[]> {
         new Set(followers),
         new Set(cachedFollowers.data)
       );
-      const newUnfollowers = difference(
+      const NoLongerFollowed = difference(
         new Set(cachedFollowers.data),
         new Set(followers)
       );
-      console.log("new followers:", [...newFollowers]);
-      console.log("no longer followed you:", [...newUnfollowers]);
+      console.log("new followers:", [...newFollowers].join(', '));
+      console.log("no longer followed you:", [...NoLongerFollowed].join(', '));
     }
 
     cache.set("followers", {
